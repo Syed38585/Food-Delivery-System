@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: foodadmin
+      POSTGRES_PASSWORD: foodpass
+      POSTGRES_DB: fooddb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - foodnet
+
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - foodnet
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/fooddb
+      SPRING_DATASOURCE_USERNAME: foodadmin
+      SPRING_DATASOURCE_PASSWORD: foodpass
+    networks:
+      - foodnet
+
+  restaurant-service:
+    build: ./restaurant-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/fooddb
+      SPRING_DATASOURCE_USERNAME: foodadmin
+      SPRING_DATASOURCE_PASSWORD: foodpass
+    networks:
+      - foodnet
+
+  security-service:
+    build: ./security-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/fooddb
+      SPRING_DATASOURCE_USERNAME: foodadmin
+      SPRING_DATASOURCE_PASSWORD: foodpass
+    networks:
+      - foodnet
+
+  messaging-service:
+    build: ./messaging-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+    networks:
+      - foodnet
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8090:8090"
+    depends_on:
+      - eureka-server
+      - user-service
+      - restaurant-service
+      - security-service
+      - messaging-service
+    networks:
+      - foodnet
+
+volumes:
+  pgdata:
+
+networks:
+  foodnet:
+    driver: bridge
